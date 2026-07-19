@@ -205,6 +205,13 @@ class DailyExtractionTests(unittest.TestCase):
             self.assertNotIn(title, json.dumps(result["threads"], ensure_ascii=False))
             self.assertNotIn(title, result["source_digest"])
             self.assertRegex(result["threads"][0]["title"], r"^Thread [0-9a-f]{12}$")
+        self.assertEqual(
+            {result["threads"][0]["title"] for result in results},
+            {results[0]["threads"][0]["title"]},
+        )
+        self.assertEqual(
+            {result["source_digest"] for result in results}, {results[0]["source_digest"]}
+        )
         self.assertEqual(results[0]["threads"][0]["title"], repeated_result["threads"][0]["title"])
         self.assertEqual(results[0]["source_digest"], repeated_result["source_digest"])
 
