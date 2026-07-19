@@ -81,6 +81,15 @@ class EventParsingTests(unittest.TestCase):
         self.assertNotIn("sk json secret", result)
         self.assertEqual('api_key=[REDACTED]\n"api_key": [REDACTED]', result)
 
+    def test_redacts_escaped_quotes_in_quoted_secret_values(self):
+        module = load_module()
+
+        result = module.sanitize_text('"api_key": "sk secret\\"suffix"')
+
+        self.assertNotIn("sk secret", result)
+        self.assertNotIn("suffix", result)
+        self.assertEqual('"api_key": [REDACTED]', result)
+
     def test_ignores_summary_control_message(self):
         module = load_module()
 
