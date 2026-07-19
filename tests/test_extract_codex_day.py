@@ -70,6 +70,17 @@ class EventParsingTests(unittest.TestCase):
         self.assertNotIn("sk-secret-value", result)
         self.assertIn("[REDACTED]", result)
 
+    def test_fully_redacts_quoted_and_json_like_secret_values(self):
+        module = load_module()
+
+        result = module.sanitize_text(
+            'api_key="sk-secret-value"\n"api_key": "sk json secret"'
+        )
+
+        self.assertNotIn("sk-secret-value", result)
+        self.assertNotIn("sk json secret", result)
+        self.assertEqual('api_key=[REDACTED]\n"api_key": [REDACTED]', result)
+
     def test_ignores_summary_control_message(self):
         module = load_module()
 
