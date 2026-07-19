@@ -1,6 +1,6 @@
 # Codex Optimization Rubric
 
-Every recommendation must include a priority, sanitized evidence, a concrete action, and an executable example. Base all observations on normalized extracted data only.
+Every recommendation must include a priority, sanitized evidence, a concrete action, and an executable example. Base all observations on normalized extracted data only. Sanitized evidence is a thread title + short behavioral observation, never raw private transcript. Always merge repeated issues into one recommendation with representative evidence.
 
 ## Model and reasoning
 
@@ -20,4 +20,4 @@ Recommend continuing the current conversation when its context remains relevant 
 
 ## Open-ended review
 
-Review evidence-only signals across task decomposition, tool sequencing, verification, error recovery, security and privacy, delivery discipline, context size, repetition, and user alignment. Do not infer hidden intent or claim unsupported causes. Prefer a smaller set of high-signal recommendations over filler.
+Review evidence-only signals across Skill/tool/Codex surface, task decomposition, independent parallelism, tool sequencing, acceptance criteria, file/log/reference inputs, verification, feedback loops, error recovery, security and privacy, delivery discipline, context size, repetition, and user alignment. Do not infer hidden intent or claim unsupported causes. For repeated work encode Skill/script/AGENTS.md guidance or automation. Prefer a smaller set of high-signal recommendations over filler.
