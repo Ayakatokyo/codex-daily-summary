@@ -126,6 +126,18 @@ class ReportGuardTests(unittest.TestCase):
 
         self.assertEqual([], module.validate_report(report))
 
+    def test_rejects_italic_and_html_presentational_secret_names(self):
+        module = load_module()
+        report = (
+            VALID
+            + "\n_api_key_=sk-live-secret\n<b>api_key</b>=sk-live-secret\n"
+            + "<code>api_key</code>=sk-live-secret\n"
+        )
+
+        errors = module.validate_report(report)
+
+        self.assertEqual(3, sum("api_key" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

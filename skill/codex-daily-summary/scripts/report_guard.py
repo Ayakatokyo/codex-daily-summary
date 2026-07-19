@@ -14,11 +14,22 @@ REQUIRED_HEADINGS = (
     "来源索引",
 )
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
+SENSITIVE_NAME = (
+    r"api[ _-]?key|access[ _-]?token|client[ _-]?secret|password|webhook|"
+    r"robotCode|recipientUserId"
+)
 SENSITIVE_ASSIGNMENT = re.compile(
-    r"(?im)(?:\*{1,3}|__|~~|`|<strong>)?(?P<name>api[ _-]?key|access[ _-]?token|client[ _-]?secret|"
-    r"password|webhook|robotCode|recipientUserId)(?:\b|(?=__))(?:\*{1,3}|__|~~|`|</strong>)?(?:[\"'])?\s*[:=]\s*"
+    rf"(?im)(?P<name>{SENSITIVE_NAME})\b(?:[\"'])?\s*[:=]\s*"
     r"(?P<value>\"(?:\\.|[^\"\\\r\n])*\"|'(?:\\.|[^'\\\r\n])*'|\S+)"
 )
+PRESENTATIONAL_SECRET_KEY = re.compile(
+    rf"(?i)(?:[*_~`]+|<[a-z][^>]*>)+(?P<name>{SENSITIVE_NAME})"
+    r"(?:[*_~`]+|</[a-z][^>]*>)+(?=\s*[:=])"
+)
+
+
+def _normalize_secret_key_wrappers(text: str) -> str:
+    return PRESENTATIONAL_SECRET_KEY.sub(lambda match: match.group("name"), text)
 
 
 def _assignment_value(match: re.Match[str]) -> str:
@@ -53,9 +64,10 @@ def validate_report(report: str) -> list[str]:
         if heading not in headings:
             errors.append(f"missing required section: {heading}")
 
-    for match in SENSITIVE_ASSIGNMENT.finditer(report):
+    scan_text = _normalize_secret_key_wrappers(report)
+    for match in SENSITIVE_ASSIGNMENT.finditer(scan_text):
         value = _assignment_value(match)
-        remainder = report[match.end():].split("\n", 1)[0].strip()
+        remainder = scan_text[match.end():].split("\n", 1)[0].strip()
         if value != "[REDACTED]" or (remainder and not _only_redacted_assignments(remainder)):
             errors.append(f"unredacted sensitive assignment: {match.group('name')}")
 
