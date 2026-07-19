@@ -40,9 +40,6 @@ VALID_REPORT = """# Codex 工作日报 - 2026-07-19
 - 当天证据：日报需要可追溯投递结果。
 - 优化建议：保留独立渠道账本。
 - 可直接执行：检查渠道状态文件。
-
-## 来源索引
-- Thread abc123.
 """
 
 
@@ -80,8 +77,17 @@ class FeishuDeliveryTests(unittest.TestCase):
         self.assertIn("--as bot", serialized)
         self.assertIn("--user-id ou-current", serialized)
         self.assertIn("--markdown Body", serialized)
-        self.assertIn("codex-daily-summary:feishu:2026-07-19:digest-a:1", serialized)
+        self.assertIn("cdsf-20260719-digest-a-1", serialized)
         self.assertNotIn("stranger", serialized)
+
+    def test_idempotency_key_stays_within_feishu_field_limit(self):
+        module = load("send_feishu")
+        digest = "7ba2f4ffdbe6c6375cfc73f7efba8edf5c19502be1f8a6fd1cac2e477f7b7f0c"
+        command = module.build_command("lark-cli", {"recipientOpenId": "ou-current", "timezone": "Asia/Shanghai"}, "Body", "2026-07-18", digest, 12)
+        key = command[command.index("--idempotency-key") + 1]
+        self.assertLessEqual(len(key), 50)
+        self.assertIn(digest[:32], key)
+        self.assertIn("-12", key)
 
     def test_sent_digest_is_not_sent_twice(self):
         module = load("send_feishu")
@@ -100,6 +106,89 @@ class FeishuDeliveryTests(unittest.TestCase):
             module.deliver(VALID_REPORT, "2026-07-19", "digest-a", config, state, runner=runner)
 
         self.assertEqual(1, len(calls))
+
+    def test_delivery_chunks_markdown_for_feishu_field_limits(self):
+        module = load("send_feishu")
+        calls = []
+        paragraph = "内容" * 450
+        report = f"""# Codex 工作日报 - 2026-07-19
+
+## 今日概览
+{paragraph}
+
+## 项目进展
+{paragraph}
+
+## 当前阻塞
+无。
+
+## 下一日待办
+{paragraph}
+
+## Codex 使用优化建议
+{paragraph}
+"""
+
+        def runner(command):
+            calls.append(command)
+            return module.CommandResult(0, '{"ok": true}', "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "feishu-config.json"
+            state = root / "feishu-state.json"
+            config.write_text(json.dumps({"recipientOpenId": "ou-current", "timezone": "Asia/Shanghai"}), encoding="utf-8")
+            module.deliver(report, "2026-07-19", "digest-a", config, state, runner=runner)
+
+        self.assertGreater(len(calls), 1)
+        for command in calls:
+            body = command[command.index("--markdown") + 1]
+            self.assertLessEqual(len(body), 1200)
+
+    def test_delivery_splits_long_sections_without_losing_tail_content(self):
+        module = load("send_feishu")
+        calls = []
+        tail = "TAIL-END-OF-REPORT"
+        report = VALID_REPORT.replace(
+            "检查渠道状态文件。",
+            ("长段落内容" * 260) + tail,
+        )
+
+        def runner(command):
+            calls.append(command)
+            return module.CommandResult(0, '{"ok": true}', "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "feishu-config.json"
+            state = root / "feishu-state.json"
+            config.write_text(json.dumps({"recipientOpenId": "ou-current", "timezone": "Asia/Shanghai"}), encoding="utf-8")
+            module.deliver(report, "2026-07-19", "digest-a", config, state, runner=runner)
+
+        sent_bodies = [command[command.index("--markdown") + 1] for command in calls]
+        self.assertGreater(len(sent_bodies), 1)
+        self.assertTrue(all(len(body) <= 1200 for body in sent_bodies))
+        self.assertIn(tail, "\n".join(sent_bodies))
+
+    def test_delivery_converts_fenced_code_blocks_for_feishu_markdown(self):
+        module = load("send_feishu")
+        calls = []
+        report = VALID_REPORT.replace("检查渠道状态文件。", "```sh\npython -m unittest discover -s tests -v\n   ```")
+
+        def runner(command):
+            calls.append(command)
+            return module.CommandResult(0, '{"ok": true}', "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "feishu-config.json"
+            state = root / "feishu-state.json"
+            config.write_text(json.dumps({"recipientOpenId": "ou-current", "timezone": "Asia/Shanghai"}), encoding="utf-8")
+            module.deliver(report, "2026-07-19", "digest-a", config, state, runner=runner)
+
+        body = calls[0][calls[0].index("--markdown") + 1]
+        self.assertNotIn("```", body)
+        self.assertIn("    python -m unittest discover -s tests -v", body)
 
     def test_timeout_becomes_unknown_without_retry(self):
         module = load("send_feishu")

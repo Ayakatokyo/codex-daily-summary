@@ -42,6 +42,12 @@ class SkillContractTests(unittest.TestCase):
             with self.subTest(heading=heading):
                 self.assertIn(f"## {heading}", rubric_text)
 
+    def test_final_report_template_excludes_source_index(self):
+        skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Do not include a `来源索引` section", skill_text)
+        self.assertNotIn("and `来源索引`", skill_text)
+
     def test_only_daily_report_or_explicit_send_requests_authorize_delivery(self):
         skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         openai_yaml = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")

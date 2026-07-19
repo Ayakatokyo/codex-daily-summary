@@ -31,9 +31,6 @@ VALID = """# Codex 工作日报 - 2026-07-19
 
 ## Codex 使用优化建议
 - 优先级：P1；当天证据：两次会话包含重复的状态查询；优化建议：合并查询步骤；可直接执行：复用一次提取结果。
-
-## 来源索引
-- Repo A：本地 Codex 会话记录。
 """
 
 
@@ -42,6 +39,14 @@ class ReportGuardTests(unittest.TestCase):
         module = load_module()
 
         self.assertEqual([], module.validate_report(VALID))
+
+    def test_rejects_source_index_section_in_final_report(self):
+        module = load_module()
+        report = VALID + "\n## 来源索引\n- Thread abc123.\n"
+
+        errors = module.validate_report(report)
+
+        self.assertTrue(any("forbidden section" in error and "来源索引" in error for error in errors))
 
     def test_reports_missing_section_and_unredacted_sensitive_value(self):
         module = load_module()

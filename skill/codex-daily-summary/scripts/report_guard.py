@@ -11,8 +11,8 @@ REQUIRED_HEADINGS = (
     "当前阻塞",
     "下一日待办",
     "Codex 使用优化建议",
-    "来源索引",
 )
+FORBIDDEN_HEADINGS = ("来源索引",)
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 SENSITIVE_NAME = (
     r"api[ _-]?key|access[ _-]?token|client[ _-]?secret|password|webhook|"
@@ -63,6 +63,9 @@ def validate_report(report: str) -> list[str]:
     for heading in REQUIRED_HEADINGS:
         if heading not in headings:
             errors.append(f"missing required section: {heading}")
+    for heading in FORBIDDEN_HEADINGS:
+        if heading in headings:
+            errors.append(f"forbidden section: {heading}")
 
     scan_text = _normalize_secret_key_wrappers(report)
     for match in SENSITIVE_ASSIGNMENT.finditer(scan_text):

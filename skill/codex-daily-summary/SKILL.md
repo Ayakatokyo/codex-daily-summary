@@ -14,7 +14,7 @@ Use for a daily Codex report, a specified-day report, a usage review, or a reque
    ```sh
    python3 scripts/extract_codex_day.py --date YYYY-MM-DD --timezone Asia/Shanghai --output /tmp/codex-daily-summary/YYYY-MM-DD/source.json
    ```
-3. Build `report.md` as fixed Markdown from normalized source data only. Include `# Codex 工作日报 - YYYY-MM-DD` and the guard-required sections: `今日概览`, `项目进展`, `当前阻塞`, `下一日待办`, `Codex 使用优化建议`, and `来源索引`. Never include raw system, developer, reasoning, environment, or tool content.
+3. Build `report.md` as fixed Markdown from normalized source data only. Include `# Codex 工作日报 - YYYY-MM-DD` and the guard-required sections: `今日概览`, `项目进展`, `当前阻塞`, `下一日待办`, and `Codex 使用优化建议`. Do not include a `来源索引` section in the final report. Never include raw system, developer, reasoning, environment, or tool content.
 4. Apply the rubric for Codex usage optimization. Normally provide 4-6 evidence-based recommendations, never more than 8; provide fewer than 4 when the evidence is weak. Every recommendation needs priority, sanitized evidence, a concrete action, and an executable example.
 5. Validate before sending:
    ```sh

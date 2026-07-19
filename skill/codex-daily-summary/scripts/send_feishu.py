@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,8 @@ from typing import Any, Callable
 CONFIG_DIRECTORY = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "codex-daily-summary"
 DEFAULT_CONFIG = CONFIG_DIRECTORY / "feishu-config.json"
 DEFAULT_STATE = CONFIG_DIRECTORY / "feishu-state.json"
+MAX_MARKDOWN_CHARS = 1200
+FENCED_CODE = re.compile(r"```[^\n]*\n(?P<body>.*?)\n\s*```", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,98 @@ def default_runner(command: list[str]) -> CommandResult:
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
 
 
+def idempotency_key(report_date: str, source_digest: str, part: int) -> str:
+    compact_date = report_date.replace("-", "")
+    return f"cdsf-{compact_date}-{source_digest[:32]}-{part}"
+
+
+def feishu_markdown(report: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        body = match.group("body").strip("\n")
+        return "\n" + "\n".join(f"    {line}" if line else "" for line in body.splitlines()) + "\n"
+
+    return FENCED_CODE.sub(replace, report)
+
+
+def _paragraph_units(markdown: str) -> list[str]:
+    units: list[str] = []
+    current: list[str] = []
+    for line in markdown.strip().splitlines():
+        if not line.strip():
+            if current:
+                units.append("\n".join(current).strip())
+                current = []
+            continue
+        if line.startswith("##") and current:
+            units.append("\n".join(current).strip())
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        units.append("\n".join(current).strip())
+    return units
+
+
+def _split_oversized_unit(unit: str, capacity: int) -> list[str]:
+    if len(unit) <= capacity:
+        return [unit]
+    pieces: list[str] = []
+    current = ""
+    for line in unit.splitlines():
+        line = line.rstrip()
+        if len(line) > capacity:
+            if current:
+                pieces.append(current)
+                current = ""
+            pieces.extend(line[index : index + capacity] for index in range(0, len(line), capacity))
+            continue
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > capacity:
+            pieces.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces
+
+
+def feishu_chunks(report: str, max_chars: int = MAX_MARKDOWN_CHARS) -> list[str]:
+    if max_chars <= 0:
+        raise ValueError("max_chars must be positive")
+    report = report.strip()
+    if len(report) <= max_chars:
+        return [report]
+
+    lines = report.splitlines()
+    title = next((line for line in lines if line.startswith("# ")), "# Codex 工作日报")
+    continuation_title = f"{title}（续）"
+    body_start = next((index + 1 for index, line in enumerate(lines) if line == title), 0)
+    body = "\n".join(lines[body_start:]).strip()
+
+    chunks: list[str] = []
+    current = title
+    content_capacity = max_chars - len(continuation_title) - 2
+    if content_capacity <= 0:
+        raise ValueError("max_chars too small for Feishu title")
+
+    for unit in _paragraph_units(body):
+        for piece in _split_oversized_unit(unit, content_capacity):
+            candidate = f"{current}\n\n{piece}" if current else piece
+            if len(candidate) > max_chars and current != title:
+                chunks.append(current)
+                current = f"{continuation_title}\n\n{piece}"
+            elif len(candidate) > max_chars:
+                chunks.append(current)
+                current = f"{continuation_title}\n\n{piece}"
+            else:
+                current = candidate
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
 def build_command(executable: str, config: dict[str, str], body: str, report_date: str, source_digest: str, part: int) -> list[str]:
     return [
         executable,
@@ -66,7 +161,7 @@ def build_command(executable: str, config: dict[str, str], body: str, report_dat
         "--markdown",
         body,
         "--idempotency-key",
-        f"codex-daily-summary:feishu:{report_date}:{source_digest}:{part}",
+        idempotency_key(report_date, source_digest, part),
         "--format",
         "json",
     ]
@@ -140,7 +235,7 @@ def deliver(
     errors = guard.validate_report(report)
     if errors:
         raise ValueError("invalid report: " + "; ".join(errors))
-    chunks = guard.chunk_report(report, max_chars=20_000)
+    chunks = feishu_chunks(feishu_markdown(report), max_chars=MAX_MARKDOWN_CHARS)
     ledger = load_ledger(Path(state_path))
     resolved = executable or (resolve_lark() if runner is default_runner else "lark-cli")
     deliveries = []
