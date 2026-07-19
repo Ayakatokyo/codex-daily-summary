@@ -50,17 +50,17 @@ class SkillContractTests(unittest.TestCase):
             "Review-only or no-send requests never authorize delivery.", skill_text
         )
         self.assertIn(
-            "Only a manual daily summary request, daily report request, or explicit send request authorizes immediate delivery to the fixed configured recipient.",
+            "Only a manual daily summary request, daily report request, or explicit send request authorizes immediate delivery to the fixed configured recipients.",
             skill_text,
         )
         self.assertIn(
             "Do not condition delivery on a separate delivery request.", skill_text
         )
         self.assertIn(
-            "总结今天的 Codex 工作，复盘我的 Codex 使用方式，并直接发送到我的钉钉。",
+            "总结今天的 Codex 工作，复盘我的 Codex 使用方式，并直接发送到我的钉钉和飞书。",
             openai_yaml,
         )
-        self.assertIn("日报请求可推送钉钉", openai_yaml)
+        self.assertIn("日报请求可推送钉钉和飞书", openai_yaml)
 
     def test_rubric_requires_safe_evidence_and_complete_open_ended_review(self):
         rubric_text = (SKILL / "references" / "codex-optimization-rubric.md").read_text(
@@ -81,6 +81,19 @@ class SkillContractTests(unittest.TestCase):
         ]:
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, rubric_text)
+
+    def test_skill_delivers_to_feishu_and_dingtalk_independently(self):
+        skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+
+        for phrase in [
+            "configure_feishu.py",
+            "send_feishu.py",
+            "DingTalk and Feishu independently",
+            "A failure or UNKNOWN result on one channel does not suppress the other channel.",
+            "fixed configured recipients",
+        ]:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, skill_text)
 
 
 if __name__ == "__main__":
