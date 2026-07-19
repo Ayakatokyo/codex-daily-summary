@@ -35,6 +35,11 @@ def sanitize_text(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.strip().splitlines())
 
 
+def safe_thread_title(thread_id: object, title: object) -> str:
+    identity = f"{thread_id}\0{title}".encode("utf-8")
+    return f"Thread {hashlib.sha256(identity).hexdigest()[:12]}"
+
+
 def is_control_message(text: str) -> bool:
     normalized = text.strip().lower().rstrip("。.!！?？").strip()
     return normalized in CONTROL_MESSAGES
@@ -232,7 +237,7 @@ def extract_day(codex_home: Path, target_date: datetime.date, timezone_name: str
         threads.append(
             {
                 "id": row["id"],
-                "title": sanitize_text(str(row["title"])),
+                "title": safe_thread_title(row["id"], row["title"]),
                 "cwd": row["cwd"],
                 "archived": row["archived"],
                 "model": turn_context.get("model") or row["model"],

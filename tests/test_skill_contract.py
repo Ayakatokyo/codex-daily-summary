@@ -69,7 +69,7 @@ class SkillContractTests(unittest.TestCase):
 
         for phrase in [
             "merge repeated issues",
-            "sanitized title label, not raw title",
+            "stable non-reversible title label, not raw title",
             "short behavioral observation",
             "never raw private transcript",
             "Skill/tool/Codex surface",

@@ -1,6 +1,6 @@
 # Codex Optimization Rubric
 
-Every recommendation must include a priority, sanitized evidence, a concrete action, and an executable example. Base all observations on normalized extracted data only. Sanitized evidence is a sanitized title label, not raw title, plus a short behavioral observation; never raw private transcript. Always merge repeated issues into one recommendation with representative evidence.
+Every recommendation must include a priority, sanitized evidence, a concrete action, and an executable example. Base all observations on normalized extracted data only. Sanitized evidence is a stable non-reversible title label, not raw title, plus a short behavioral observation; never raw private transcript. Always merge repeated issues into one recommendation with representative evidence.
 
 ## Model and reasoning
 

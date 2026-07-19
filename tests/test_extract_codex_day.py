@@ -154,7 +154,7 @@ class DailyExtractionTests(unittest.TestCase):
 
         self.assertNotEqual(first, second)
 
-    def test_sanitizes_secret_thread_title_before_source_digest(self):
+    def test_replaces_private_thread_titles_before_source_digest(self):
         module = load_module()
 
         def extract_with_title(home: Path, title: str):
@@ -187,17 +187,26 @@ class DailyExtractionTests(unittest.TestCase):
             database.close()
             return module.extract_day(home, date(2026, 7, 19), "Asia/Shanghai")
 
-        with tempfile.TemporaryDirectory() as secret_directory, tempfile.TemporaryDirectory() as safe_directory:
-            secret_result = extract_with_title(
-                Path(secret_directory), "Review api_key=sk-secret-title"
-            )
-            safe_result = extract_with_title(
-                Path(safe_directory), "Review api_key=[REDACTED]"
+        private_titles = [
+            "Review api_key=sk-secret-title",
+            "Acme merger confidential",
+            "Jane Doe payroll correction",
+        ]
+        with tempfile.TemporaryDirectory() as first_directory, tempfile.TemporaryDirectory() as second_directory:
+            results = [
+                extract_with_title(Path(first_directory) / str(index), title)
+                for index, title in enumerate(private_titles)
+            ]
+            repeated_result = extract_with_title(
+                Path(second_directory), private_titles[0]
             )
 
-        self.assertEqual("Review api_key=[REDACTED]", secret_result["threads"][0]["title"])
-        self.assertNotIn("sk-secret-title", json.dumps(secret_result, ensure_ascii=False))
-        self.assertEqual(safe_result["source_digest"], secret_result["source_digest"])
+        for title, result in zip(private_titles, results):
+            self.assertNotIn(title, json.dumps(result["threads"], ensure_ascii=False))
+            self.assertNotIn(title, result["source_digest"])
+            self.assertRegex(result["threads"][0]["title"], r"^Thread [0-9a-f]{12}$")
+        self.assertEqual(results[0]["threads"][0]["title"], repeated_result["threads"][0]["title"])
+        self.assertEqual(results[0]["source_digest"], repeated_result["source_digest"])
 
     def test_falls_back_to_session_files_without_state_database(self):
         module = load_module()
@@ -214,7 +223,7 @@ class DailyExtractionTests(unittest.TestCase):
             result = module.extract_day(home, date(2026, 7, 19), "Asia/Shanghai")
 
         self.assertEqual(1, len(result["threads"]))
-        self.assertEqual("fallback", result["threads"][0]["title"])
+        self.assertRegex(result["threads"][0]["title"], r"^Thread [0-9a-f]{12}$")
 
 
 if __name__ == "__main__":
