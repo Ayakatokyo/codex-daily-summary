@@ -35,20 +35,20 @@ class EventParsingTests(unittest.TestCase):
             {
                 "type": "response_item",
                 "timestamp": "2026-07-19T09:00:02Z",
-                "phase": "commentary",
                 "payload": {
                     "type": "message",
                     "role": "assistant",
+                    "phase": "commentary",
                     "content": [{"text": "working"}],
                 },
             },
             {
                 "type": "response_item",
                 "timestamp": "2026-07-19T09:00:03Z",
-                "phase": "final_answer",
                 "payload": {
                     "type": "message",
                     "role": "assistant",
+                    "phase": "final_answer",
                     "content": [{"text": "Fixed login and tests pass"}],
                 },
             },

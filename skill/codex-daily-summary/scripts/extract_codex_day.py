@@ -62,7 +62,7 @@ def extract_messages(records: Iterable[dict]) -> list[dict]:
         role = payload.get("role")
         if role not in {"user", "assistant"}:
             continue
-        if role == "assistant" and record.get("phase") not in {None, "final_answer"}:
+        if role == "assistant" and payload.get("phase") not in {None, "final_answer"}:
             continue
 
         text = sanitize_text(_content_text(payload.get("content")))
