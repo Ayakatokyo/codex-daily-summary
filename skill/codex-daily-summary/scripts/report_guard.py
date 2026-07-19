@@ -21,6 +21,15 @@ SENSITIVE_ASSIGNMENT = re.compile(
 )
 
 
+def _only_redacted_assignments(text: str) -> bool:
+    while text:
+        match = SENSITIVE_ASSIGNMENT.match(text)
+        if match is None or match.group("value").strip("\"'") != "[REDACTED]":
+            return False
+        text = text[match.end():].strip()
+    return True
+
+
 def validate_report(report: str) -> list[str]:
     lines = report.splitlines()
     errors = []
@@ -40,7 +49,7 @@ def validate_report(report: str) -> list[str]:
     for match in SENSITIVE_ASSIGNMENT.finditer(report):
         value = match.group("value").strip("\"'")
         remainder = report[match.end():].split("\n", 1)[0].strip()
-        if value != "[REDACTED]" or remainder:
+        if value != "[REDACTED]" or (remainder and not _only_redacted_assignments(remainder)):
             errors.append(f"unredacted sensitive assignment: {match.group('name')}")
 
     return errors

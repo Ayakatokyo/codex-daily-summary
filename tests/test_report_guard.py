@@ -99,6 +99,12 @@ class ReportGuardTests(unittest.TestCase):
         self.assertTrue(any("api_key" in error for error in errors))
         self.assertTrue(any("access_token" in error for error in errors))
 
+    def test_accepts_adjacent_redacted_sensitive_assignments(self):
+        module = load_module()
+        report = VALID + "\napi_key=[REDACTED] access_token=[REDACTED]\n"
+
+        self.assertEqual([], module.validate_report(report))
+
 
 if __name__ == "__main__":
     unittest.main()
