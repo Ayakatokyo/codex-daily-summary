@@ -15,16 +15,23 @@ REQUIRED_HEADINGS = (
 )
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 SENSITIVE_ASSIGNMENT = re.compile(
-    r"(?im)(?:\*{1,3}|`)?(?P<name>api[ _-]?key|access[ _-]?token|client[ _-]?secret|"
-    r"password|webhook|robotCode|recipientUserId)\b(?:\*{1,3}|`)?(?:[\"'])?\s*[:=]\s*"
+    r"(?im)(?:\*{1,3}|__|~~|`|<strong>)?(?P<name>api[ _-]?key|access[ _-]?token|client[ _-]?secret|"
+    r"password|webhook|robotCode|recipientUserId)(?:\b|(?=__))(?:\*{1,3}|__|~~|`|</strong>)?(?:[\"'])?\s*[:=]\s*"
     r"(?P<value>\"(?:\\.|[^\"\\\r\n])*\"|'(?:\\.|[^'\\\r\n])*'|\S+)"
 )
 
 
+def _assignment_value(match: re.Match[str]) -> str:
+    return match.group("value").strip("\"'").rstrip(",;")
+
+
 def _only_redacted_assignments(text: str) -> bool:
     while text:
+        text = text.lstrip(",; ")
+        if not text:
+            return True
         match = SENSITIVE_ASSIGNMENT.match(text)
-        if match is None or match.group("value").strip("\"'") != "[REDACTED]":
+        if match is None or _assignment_value(match) != "[REDACTED]":
             return False
         text = text[match.end():].strip()
     return True
@@ -47,7 +54,7 @@ def validate_report(report: str) -> list[str]:
             errors.append(f"missing required section: {heading}")
 
     for match in SENSITIVE_ASSIGNMENT.finditer(report):
-        value = match.group("value").strip("\"'")
+        value = _assignment_value(match)
         remainder = report[match.end():].split("\n", 1)[0].strip()
         if value != "[REDACTED]" or (remainder and not _only_redacted_assignments(remainder)):
             errors.append(f"unredacted sensitive assignment: {match.group('name')}")

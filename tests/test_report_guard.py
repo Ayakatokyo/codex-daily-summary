@@ -105,6 +105,27 @@ class ReportGuardTests(unittest.TestCase):
 
         self.assertEqual([], module.validate_report(report))
 
+    def test_rejects_underlined_struck_and_html_wrapped_secret_names(self):
+        module = load_module()
+        report = (
+            VALID
+            + "\n__api_key__=sk-live-secret\n~~api_key~~=sk-live-secret\n"
+            + "<strong>api_key</strong>=sk-live-secret\n"
+        )
+
+        errors = module.validate_report(report)
+
+        self.assertEqual(3, sum("api_key" in error for error in errors))
+
+    def test_accepts_punctuation_separated_redacted_assignments(self):
+        module = load_module()
+        report = (
+            VALID
+            + "\napi_key=[REDACTED], access_token=[REDACTED]; client_secret=[REDACTED]\n"
+        )
+
+        self.assertEqual([], module.validate_report(report))
+
 
 if __name__ == "__main__":
     unittest.main()
