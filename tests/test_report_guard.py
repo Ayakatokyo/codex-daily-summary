@@ -83,6 +83,22 @@ class ReportGuardTests(unittest.TestCase):
             )
         )
 
+    def test_rejects_unchunkable_heading_block(self):
+        module = load_module()
+        report = "# Codex 工作日报 - 2026-07-19\n\n## 今日概览\n" + "内容" * 100
+
+        with self.assertRaisesRegex(ValueError, "heading block exceeds max_chars"):
+            module.chunk_report(report, max_chars=100)
+
+    def test_rejects_formatted_and_false_redacted_sensitive_assignments(self):
+        module = load_module()
+        report = VALID + "\n**api_key**: sk-live-secret\naccess_token=[REDACTED] sk-live-secret\n"
+
+        errors = module.validate_report(report)
+
+        self.assertTrue(any("api_key" in error for error in errors))
+        self.assertTrue(any("access_token" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

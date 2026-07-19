@@ -15,8 +15,8 @@ REQUIRED_HEADINGS = (
 )
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 SENSITIVE_ASSIGNMENT = re.compile(
-    r"(?im)(?P<name>api[ _-]?key|access[ _-]?token|client[ _-]?secret|"
-    r"password|webhook|robotCode|recipientUserId)\b(?:[\"'])?\s*[:=]\s*"
+    r"(?im)(?:\*{1,3}|`)?(?P<name>api[ _-]?key|access[ _-]?token|client[ _-]?secret|"
+    r"password|webhook|robotCode|recipientUserId)\b(?:\*{1,3}|`)?(?:[\"'])?\s*[:=]\s*"
     r"(?P<value>\"(?:\\.|[^\"\\\r\n])*\"|'(?:\\.|[^'\\\r\n])*'|\S+)"
 )
 
@@ -39,7 +39,8 @@ def validate_report(report: str) -> list[str]:
 
     for match in SENSITIVE_ASSIGNMENT.finditer(report):
         value = match.group("value").strip("\"'")
-        if value != "[REDACTED]":
+        remainder = report[match.end():].split("\n", 1)[0].strip()
+        if value != "[REDACTED]" or remainder:
             errors.append(f"unredacted sensitive assignment: {match.group('name')}")
 
     return errors
@@ -69,6 +70,8 @@ def chunk_report(report: str, max_chars: int) -> list[str]:
     current = title
 
     for block in blocks:
+        if len(f"{continuation_title}\n\n{block}") > max_chars:
+            raise ValueError("heading block exceeds max_chars")
         candidate = f"{current}\n\n{block}" if current else block
         if current != title and len(candidate) > max_chars:
             chunks.append(current)
