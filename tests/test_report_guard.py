@@ -64,6 +64,25 @@ class ReportGuardTests(unittest.TestCase):
         self.assertGreater(len(chunks), 1)
         self.assertTrue(all(chunk.startswith("# ") for chunk in chunks))
 
+    def test_chunks_at_h2_or_h3_boundaries_without_repeating_h1_in_content(self):
+        module = load_module()
+        report = VALID.replace(
+            "### Repo A\n完成事件提取和脱敏测试。",
+            "补充进展。" * 130 + "\n\n### Repo A\n完成事件提取和脱敏测试。",
+        )
+
+        chunks = module.chunk_report(report, max_chars=700)
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(chunk.startswith("# Codex 工作日报 - 2026-07-19") for chunk in chunks))
+        self.assertTrue(all("\n# Codex 工作日报" not in chunk for chunk in chunks))
+        self.assertTrue(
+            any(
+                chunk.split("\n\n", 1)[1].startswith("### Repo A")
+                for chunk in chunks[1:]
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

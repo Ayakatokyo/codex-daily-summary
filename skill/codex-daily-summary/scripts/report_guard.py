@@ -53,7 +53,7 @@ def _report_blocks(report: str) -> tuple[str, list[str]]:
         0,
     )
     body = "".join(lines[body_start:]).lstrip("\r\n")
-    return title, [block.strip() for block in re.split(r"(?=^#{1,2}\s+)", body, flags=re.MULTILINE) if block.strip()]
+    return title, [block.strip() for block in re.split(r"(?=^#{2,3}\s+)", body, flags=re.MULTILINE) if block.strip()]
 
 
 def chunk_report(report: str, max_chars: int) -> list[str]:
