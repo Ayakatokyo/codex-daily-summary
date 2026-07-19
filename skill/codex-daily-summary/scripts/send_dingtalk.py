@@ -1,5 +1,6 @@
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import importlib.util
 import json
 import os
@@ -11,8 +12,9 @@ import tempfile
 from typing import Callable, Any
 
 
-DEFAULT_CONFIG = Path.home() / ".config" / "codex-daily-summary" / "dingtalk.json"
-DEFAULT_STATE = Path.home() / ".local" / "state" / "codex-daily-summary" / "deliveries.json"
+CONFIG_DIRECTORY = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "codex-daily-summary"
+DEFAULT_CONFIG = CONFIG_DIRECTORY / "config.json"
+DEFAULT_STATE = CONFIG_DIRECTORY / "state.json"
 
 
 @dataclass(frozen=True)
@@ -160,10 +162,11 @@ def deliver(
             if existing.get("status") in {"PENDING", "UNKNOWN"}:
                 raise DeliveryUnknown("existing delivery has an unresolved outcome")
 
+        executable = dws or (resolve_dws() if runner is default_runner else "dws")
+
         ledger["deliveries"][key] = {"status": "PENDING"}
         save_ledger(Path(state_path), ledger)
         try:
-            executable = dws or (resolve_dws() if runner is default_runner else "dws")
             result = runner(build_command(executable, config, f"Codex 工作日报 - {report_date}", chunk))
         except (TimeoutError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
             _unknown(ledger, Path(state_path), key, error)
@@ -180,7 +183,7 @@ def deliver(
             save_ledger(Path(state_path), ledger)
             raise RuntimeError("DingTalk rejected the delivery")
 
-        sent = {"status": "SENT"}
+        sent = {"status": "SENT", "sentAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
         if "processQueryKey" in response:
             sent["processQueryKey"] = response["processQueryKey"]
         elif isinstance(response.get("result"), dict) and "processQueryKey" in response["result"]:

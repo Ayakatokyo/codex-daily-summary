@@ -8,7 +8,8 @@ import tempfile
 from typing import Any, Callable
 
 
-DEFAULT_CONFIG = Path.home() / ".config" / "codex-daily-summary" / "dingtalk.json"
+CONFIG_DIRECTORY = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "codex-daily-summary"
+DEFAULT_CONFIG = CONFIG_DIRECTORY / "config.json"
 
 
 def resolve_dws() -> str:

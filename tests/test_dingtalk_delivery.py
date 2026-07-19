@@ -1,8 +1,10 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +49,30 @@ VALID_REPORT = """# Codex 工作日报 - 2026-07-19
 
 
 class DingTalkDeliveryTests(unittest.TestCase):
+    def test_default_paths_use_xdg_config_home_and_share_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_home = Path(directory) / "xdg"
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(config_home)}, clear=False):
+                sender = load_module()
+                configurator = load_configure_module()
+
+            expected_directory = config_home / "codex-daily-summary"
+            self.assertEqual(expected_directory / "config.json", sender.DEFAULT_CONFIG)
+            self.assertEqual(expected_directory / "state.json", sender.DEFAULT_STATE)
+            self.assertEqual(sender.DEFAULT_CONFIG, configurator.DEFAULT_CONFIG)
+
+    def test_default_paths_fall_back_to_home_config_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            with patch.dict(os.environ, {"HOME": str(home)}, clear=True):
+                sender = load_module()
+                configurator = load_configure_module()
+
+            expected_directory = home / ".config" / "codex-daily-summary"
+            self.assertEqual(expected_directory / "config.json", sender.DEFAULT_CONFIG)
+            self.assertEqual(expected_directory / "state.json", sender.DEFAULT_STATE)
+            self.assertEqual(sender.DEFAULT_CONFIG, configurator.DEFAULT_CONFIG)
+
     def test_configure_rejects_exit_zero_envelope_with_success_false(self):
         module = load_configure_module()
 
@@ -155,6 +181,32 @@ class DingTalkDeliveryTests(unittest.TestCase):
 
         self.assertEqual([], calls)
 
+    def test_missing_dws_leaves_no_pending_delivery_and_does_not_run_runner(self):
+        module = load_module()
+        calls = []
+
+        def runner(command):
+            calls.append(command)
+            return module.CommandResult(0, '{"success": true}', "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "config.json"
+            state = root / "state.json"
+            config.write_text(
+                json.dumps({"robotCode": "robot-a", "recipientUserId": "me-a", "timezone": "Asia/Shanghai"}),
+                encoding="utf-8",
+            )
+            module.default_runner = runner
+            module.resolve_dws = lambda: (_ for _ in ()).throw(FileNotFoundError("dws missing"))
+
+            with self.assertRaises(FileNotFoundError):
+                module.deliver(VALID_REPORT, "2026-07-19", "digest-missing", config, state, runner=module.default_runner)
+
+            self.assertFalse(state.exists())
+
+        self.assertEqual([], calls)
+
     def test_deliver_preserves_nested_process_query_key(self):
         module = load_module()
 
@@ -175,8 +227,10 @@ class DingTalkDeliveryTests(unittest.TestCase):
             )
 
             deliveries = module.deliver(VALID_REPORT, "2026-07-19", "digest-d", config, state, runner=success_runner)
+            ledger = json.loads(state.read_text(encoding="utf-8"))
 
         self.assertEqual("pk-nested", deliveries[0]["processQueryKey"])
+        self.assertTrue(ledger["deliveries"]["2026-07-19:digest-d:1"]["sentAt"])
 
 
 if __name__ == "__main__":
