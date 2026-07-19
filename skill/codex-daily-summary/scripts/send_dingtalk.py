@@ -183,6 +183,8 @@ def deliver(
         sent = {"status": "SENT"}
         if "processQueryKey" in response:
             sent["processQueryKey"] = response["processQueryKey"]
+        elif isinstance(response.get("result"), dict) and "processQueryKey" in response["result"]:
+            sent["processQueryKey"] = response["result"]["processQueryKey"]
         ledger["deliveries"][key] = sent
         save_ledger(Path(state_path), ledger)
         deliveries.append(sent)

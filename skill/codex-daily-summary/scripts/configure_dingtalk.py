@@ -48,9 +48,12 @@ def _read_envelope(command: list[str], runner: Callable[[list[str]], tuple[int, 
     if code != 0:
         raise RuntimeError("DingTalk read-only query failed")
     try:
-        return json.loads(stdout)
+        envelope = json.loads(stdout)
     except json.JSONDecodeError as error:
         raise RuntimeError("DingTalk read-only query returned invalid JSON") from error
+    if not isinstance(envelope, dict) or envelope.get("success") is not True:
+        raise RuntimeError("DingTalk read-only query was unsuccessful")
+    return envelope
 
 
 def _atomic_write(path: Path, payload: dict[str, str]) -> None:
