@@ -1,6 +1,10 @@
 import importlib.util
+import json
 from pathlib import Path
+import sqlite3
+import tempfile
 import unittest
+from datetime import date
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +98,78 @@ class EventParsingTests(unittest.TestCase):
         module = load_module()
 
         self.assertTrue(module.is_control_message("总结今天的 Codex 工作"))
+
+
+class DailyExtractionTests(unittest.TestCase):
+    def test_extracts_active_and_archived_threads_for_local_day(self):
+        module = load_module()
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            active_path = home / "sessions" / "2026" / "07" / "19" / "active.jsonl"
+            archived_path = home / "archived_sessions" / "archived.jsonl"
+            active_path.parent.mkdir(parents=True)
+            archived_path.parent.mkdir(parents=True)
+            active_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"timestamp": "2026-07-18T16:01:00Z", "type": "turn_context", "payload": {"model": "daily-model", "effort": "high"}}),
+                        json.dumps({"timestamp": "2026-07-18T16:01:01Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"text": "Active work"}]}}),
+                    ]
+                ) + "\n",
+                encoding="utf-8",
+            )
+            archived_path.write_text(
+                json.dumps({"timestamp": "2026-07-18T16:05:00Z", "type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "final_answer", "content": [{"text": "Archived work"}]}}) + "\n",
+                encoding="utf-8",
+            )
+
+            database = sqlite3.connect(home / "state_9.sqlite")
+            database.execute(
+                "CREATE TABLE threads (id TEXT, rollout_path TEXT, cwd TEXT, title TEXT, archived INTEGER, model TEXT, reasoning_effort TEXT)"
+            )
+            database.executemany(
+                "INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [
+                    ("active", str(active_path), "/workspace/active", "Active", 0, "db-model", "low"),
+                    ("archived", str(archived_path), "/workspace/archived", "Archived", 1, "db-model", "low"),
+                ],
+            )
+            database.commit()
+            database.close()
+
+            result = module.extract_day(home, date(2026, 7, 19), "Asia/Shanghai")
+
+        self.assertEqual("2026-07-19", result["date"])
+        self.assertEqual("Asia/Shanghai", result["timezone"])
+        self.assertEqual(2, len(result["threads"]))
+        self.assertEqual("daily-model", result["threads"][0]["model"])
+        self.assertRegex(result["source_digest"], r"^[0-9a-f]{64}$")
+
+    def test_source_digest_changes_when_message_text_changes(self):
+        module = load_module()
+
+        first = module.source_digest([{"id": "thread", "messages": [{"text": "first"}]}])
+        second = module.source_digest([{"id": "thread", "messages": [{"text": "second"}]}])
+
+        self.assertNotEqual(first, second)
+
+    def test_falls_back_to_session_files_without_state_database(self):
+        module = load_module()
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            session = home / "sessions" / "2026" / "07" / "19" / "fallback.jsonl"
+            session.parent.mkdir(parents=True)
+            session.write_text(
+                json.dumps({"timestamp": "2026-07-19T09:00:00Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"text": "Fallback work"}]}}) + "\n",
+                encoding="utf-8",
+            )
+
+            result = module.extract_day(home, date(2026, 7, 19), "Asia/Shanghai")
+
+        self.assertEqual(1, len(result["threads"]))
+        self.assertEqual("fallback", result["threads"][0]["title"])
 
 
 if __name__ == "__main__":
