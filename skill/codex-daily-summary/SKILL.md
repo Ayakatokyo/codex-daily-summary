@@ -21,7 +21,7 @@ Use for a daily Codex report, a specified-day report, a usage review, or a reque
    python3 scripts/report_guard.py --report /tmp/codex-daily-summary/YYYY-MM-DD/report.md
    ```
    Stop on any validation error.
-6. Any manual summary request authorizes immediate delivery to the fixed configured recipient. Do not condition delivery on a separate delivery request. You do not ask for a second confirmation. Send only the validated Markdown:
+6. Review-only or no-send requests never authorize delivery. Complete the review and show the Markdown/status without running `send_dingtalk.py`. Only a manual daily summary request, daily report request, or explicit send request authorizes immediate delivery to the fixed configured recipient. Do not condition delivery on a separate delivery request. You do not ask for a second confirmation. Send only the validated Markdown:
    ```sh
    python3 scripts/send_dingtalk.py --report /tmp/codex-daily-summary/YYYY-MM-DD/report.md --date YYYY-MM-DD --source-digest SOURCE_DIGEST
    ```

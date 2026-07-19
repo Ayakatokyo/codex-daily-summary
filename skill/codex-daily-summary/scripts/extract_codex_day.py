@@ -232,7 +232,7 @@ def extract_day(codex_home: Path, target_date: datetime.date, timezone_name: str
         threads.append(
             {
                 "id": row["id"],
-                "title": row["title"],
+                "title": sanitize_text(str(row["title"])),
                 "cwd": row["cwd"],
                 "archived": row["archived"],
                 "model": turn_context.get("model") or row["model"],

@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex 工作日报"
-  short_description: "总结每日 Codex 工作并给出使用优化建议"
+  short_description: "总结每日 Codex 工作并给出使用优化建议；日报请求可推送钉钉"
   default_prompt: "总结今天的 Codex 工作，复盘我的 Codex 使用方式，并直接发送到我的钉钉。"

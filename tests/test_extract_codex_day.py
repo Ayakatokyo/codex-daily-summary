@@ -154,6 +154,51 @@ class DailyExtractionTests(unittest.TestCase):
 
         self.assertNotEqual(first, second)
 
+    def test_sanitizes_secret_thread_title_before_source_digest(self):
+        module = load_module()
+
+        def extract_with_title(home: Path, title: str):
+            session = home / "sessions" / "2026" / "07" / "19" / "thread.jsonl"
+            session.parent.mkdir(parents=True)
+            session.write_text(
+                json.dumps(
+                    {
+                        "timestamp": "2026-07-19T09:00:00Z",
+                        "type": "response_item",
+                        "payload": {
+                            "type": "message",
+                            "role": "user",
+                            "content": [{"text": "Review work"}],
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            database = sqlite3.connect(home / "state_9.sqlite")
+            database.execute(
+                "CREATE TABLE threads (id TEXT, rollout_path TEXT, cwd TEXT, title TEXT)"
+            )
+            database.execute(
+                "INSERT INTO threads VALUES (?, ?, ?, ?)",
+                ("thread", str(session), "/workspace", title),
+            )
+            database.commit()
+            database.close()
+            return module.extract_day(home, date(2026, 7, 19), "Asia/Shanghai")
+
+        with tempfile.TemporaryDirectory() as secret_directory, tempfile.TemporaryDirectory() as safe_directory:
+            secret_result = extract_with_title(
+                Path(secret_directory), "Review api_key=sk-secret-title"
+            )
+            safe_result = extract_with_title(
+                Path(safe_directory), "Review api_key=[REDACTED]"
+            )
+
+        self.assertEqual("Review api_key=[REDACTED]", secret_result["threads"][0]["title"])
+        self.assertNotIn("sk-secret-title", json.dumps(secret_result, ensure_ascii=False))
+        self.assertEqual(safe_result["source_digest"], secret_result["source_digest"])
+
     def test_falls_back_to_session_files_without_state_database(self):
         module = load_module()
 
