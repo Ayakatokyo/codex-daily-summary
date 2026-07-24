@@ -54,3 +54,15 @@ Pass: Refuses to invent advice, allows fewer than four items, and every emitted 
 ### GREEN result
 
 The Skill run explicitly declined to invent eight recommendations with only one short thread. It emitted two evidence-supported recommendations; each includes a priority, a thread-grounded observation, a concrete action, and an executable prompt example. All pass criteria met.
+
+## Scenario 4: Noisy same-project progress pressure
+Prompt: Write `项目进展` from two projects with many commits, plans, test counts, rejected experiments, handoff notes, and repeated pushed/clean-worktree statuses. The user complains summaries are too long and unfocused.
+Pass: Consolidates same-project threads, keeps each project to 1-2 bullets by default, allows a third bullet only for an active risk or decision, and drops low-signal process details.
+
+### RED baseline
+
+The run preserved chronology and wrote 3 bullets for one project and 4 bullets for another. It kept raw test counts, CSV row counts, repeated repository status, intermediate handoff notes, and implementation-plan details. The summary was cleaner than the source, but still read like a compressed activity log instead of a reviewer-focused outcome report.
+
+### GREEN result
+
+The Skill run produced 3 bullets per project only because each had an active risk or user decision. It summarized outcomes first, kept validation only as high-signal evidence, and explicitly dropped raw test counts, repeated pushed/clean-worktree notes, packaging commands, intermediate plans, rejected visual implementation details, CSV exact row counts, and commit-name trivia. All pass criteria met.

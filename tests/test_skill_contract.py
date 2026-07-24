@@ -48,6 +48,21 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("Do not include a `来源索引` section", skill_text)
         self.assertNotIn("and `来源索引`", skill_text)
 
+    def test_skill_requires_focused_project_summaries(self):
+        skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+
+        for phrase in [
+            "Write for a busy reviewer",
+            "In `项目进展`, give each project 1-2 bullets by default",
+            "Add a third bullet only for an active blocker, unmerged risk, or decision the user must make next.",
+            "Merge repeated threads into one statement",
+            "Drop low-signal details",
+            "raw test counts",
+            "`下一日待办` is 3-5 action-oriented bullets",
+        ]:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, skill_text)
+
     def test_only_daily_report_or_explicit_send_requests_authorize_delivery(self):
         skill_text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         openai_yaml = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
