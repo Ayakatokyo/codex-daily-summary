@@ -1,0 +1,20 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.venv/
+venv/
+.env
+.env.*
+*.local
+
+# Local delivery configs and ledgers
+config.json
+feishu-config.json
+state.json
+feishu-state.json
+
+# Generated report artifacts
+report.md
+source.json

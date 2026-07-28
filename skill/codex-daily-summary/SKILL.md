@@ -1,6 +1,6 @@
 ---
 name: codex-daily-summary
-description: Use when producing a concise Codex daily report, specified-day report, usage review, or fixed-recipient DingTalk and Feishu delivery for an Asia/Shanghai day.
+description: Use when producing a concise Codex daily report, specified-day report, usage review, or configured-recipient DingTalk and Feishu delivery for an Asia/Shanghai day.
 ---
 
 # Codex Daily Summary
@@ -28,8 +28,8 @@ Use for a daily Codex report, a specified-day report, a usage review, or a reque
    python3 scripts/report_guard.py --report /tmp/codex-daily-summary/YYYY-MM-DD/report.md
    ```
    Stop on any validation error.
-6. Configure the Feishu fixed recipient once with `scripts/configure_feishu.py`; it derives the current verified Feishu account and never accepts a runtime recipient override.
-7. Review-only or no-send requests never authorize delivery. Complete the review and show the Markdown/status without running `send_dingtalk.py` or `send_feishu.py`. Only a manual daily summary request, daily report request, or explicit send request authorizes immediate delivery to the fixed configured recipients. Do not condition delivery on a separate delivery request. You do not ask for a second confirmation. Send only the validated Markdown to DingTalk and Feishu independently:
+6. Configure the Feishu recipient once with `scripts/configure_feishu.py`; it derives the current verified Feishu account and never accepts a runtime recipient override.
+7. Review-only or no-send requests never authorize delivery. Complete the review and show the Markdown/status without running `send_dingtalk.py` or `send_feishu.py`. Only a manual daily summary request, daily report request, or explicit send request authorizes immediate delivery to the configured recipients. Do not condition delivery on a separate delivery request. You do not ask for a second confirmation. Send only the validated Markdown to DingTalk and Feishu independently:
    ```sh
    python3 scripts/send_dingtalk.py --report /tmp/codex-daily-summary/YYYY-MM-DD/report.md --date YYYY-MM-DD --source-digest SOURCE_DIGEST
    python3 scripts/send_feishu.py --report /tmp/codex-daily-summary/YYYY-MM-DD/report.md --date YYYY-MM-DD --source-digest SOURCE_DIGEST

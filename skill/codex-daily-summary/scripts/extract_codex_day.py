@@ -19,7 +19,7 @@ INJECTED_BLOCK = re.compile(
 )
 SECRET = re.compile(
     r'(?P<prefix>\b(?:api[ _-]?key|access[ _-]?token|client[ _-]?secret|'
-    r'password|webhook|robotCode|recipientUserId)\b(?:["\'])?(?P<separator>\s*[:=]\s*))'
+    r'password|webhook|robotCode|recipientUserId|recipientOpenId|openId)\b(?:["\'])?(?P<separator>\s*[:=]\s*))'
     r'(?P<value>"(?:\\.|[^"\\\r\n])*"|\'(?:\\.|[^\'\\\r\n])*\'|\S+)',
     re.IGNORECASE,
 )

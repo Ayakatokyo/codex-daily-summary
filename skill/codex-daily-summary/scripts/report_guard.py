@@ -16,7 +16,7 @@ FORBIDDEN_HEADINGS = ("来源索引",)
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 SENSITIVE_NAME = (
     r"api[ _-]?key|access[ _-]?token|client[ _-]?secret|password|webhook|"
-    r"robotCode|recipientUserId"
+    r"robotCode|recipientUserId|recipientOpenId|openId"
 )
 SENSITIVE_ASSIGNMENT = re.compile(
     rf"(?im)(?P<name>{SENSITIVE_NAME})\b(?:[\"'])?\s*[:=]\s*"
@@ -26,6 +26,7 @@ PRESENTATIONAL_SECRET_KEY = re.compile(
     rf"(?i)(?:[*_~`]+|<[a-z][^>]*>)+(?P<name>{SENSITIVE_NAME})"
     r"(?:[*_~`]+|</[a-z][^>]*>)+(?=\s*[:=])"
 )
+ABSOLUTE_LOCAL_PATH = re.compile(r"(?<![\w/])/(?:Users|home)/[^\s`<>()\]}>]+")
 
 
 def _normalize_secret_key_wrappers(text: str) -> str:
@@ -73,6 +74,9 @@ def validate_report(report: str) -> list[str]:
         remainder = scan_text[match.end():].split("\n", 1)[0].strip()
         if value != "[REDACTED]" or (remainder and not _only_redacted_assignments(remainder)):
             errors.append(f"unredacted sensitive assignment: {match.group('name')}")
+
+    if ABSOLUTE_LOCAL_PATH.search(report):
+        errors.append("report contains an absolute local path")
 
     return errors
 
